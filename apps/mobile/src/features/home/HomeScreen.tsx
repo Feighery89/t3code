@@ -67,6 +67,7 @@ import {
 import {
   buildHomeProjectScopes,
   buildHomeThreadGroups,
+  hasVisibleHomeThreadResults,
   sortHomeProjectScopes,
   type HomeProjectSortOrder,
 } from "./homeThreadList";
@@ -944,7 +945,14 @@ export function HomeScreen(props: HomeScreenProps) {
     props.pendingTasks.length > 0 ||
     archivedThreadsShelfData.hasAnyArchivedThreads ||
     archivedThreadsShelfData.error !== null;
-  const hasResults = projectGroups.length > 0;
+  const hasVisibleV1Results = hasVisibleHomeThreadResults({
+    activeResultCount: projectGroups.length,
+    archivedResultCount: archivedThreadsShelfData.threadCount,
+  });
+  const hasVisibleV2Results = hasVisibleHomeThreadResults({
+    activeResultCount: threadListV2Items.length,
+    archivedResultCount: archivedThreadsShelfData.threadCount,
+  });
   const selectedEnvironmentLabel =
     props.selectedEnvironmentId === null
       ? null
@@ -1022,7 +1030,7 @@ export function HomeScreen(props: HomeScreenProps) {
   // mobile — the menu is the one filter surface).
   const v2ListHeader = listHeader;
 
-  const listEmpty = !hasResults ? (
+  const listEmpty = !hasVisibleV1Results ? (
     hasSearchQuery && threadSearch.isPending ? null : hasSearchQuery ? (
       <EmptyState title="No results" detail={`No threads matching "${props.searchQuery}".`} />
     ) : selectedProjectScope !== null ? (
@@ -1042,8 +1050,9 @@ export function HomeScreen(props: HomeScreenProps) {
   // Self-contained: v1's listEmpty keys off projectGroups, which ignores the
   // v2 project scope, so it can be null (results elsewhere) while this list
   // is empty. Snoozed threads need no special empty state: their shelf header
-  // is a list row even while collapsed.
-  const v2ListEmpty =
+  // is a list row even while collapsed. Archived matches live in the footer,
+  // so they explicitly suppress the active-list empty state above.
+  const v2ListEmpty = !hasVisibleV2Results ? (
     hasSearchQuery && threadSearch.isPending ? null : hasSearchQuery ? (
       <EmptyState title="No results" detail={`No threads matching "${props.searchQuery}".`} />
     ) : v2ScopedProjectGroup !== null ? (
@@ -1053,7 +1062,8 @@ export function HomeScreen(props: HomeScreenProps) {
       />
     ) : (
       listEmpty
-    );
+    )
+  ) : null;
 
   if (threadListV2Enabled) {
     return (
