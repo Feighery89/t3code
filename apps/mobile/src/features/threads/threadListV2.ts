@@ -31,7 +31,7 @@ export { snoozeWakeLabel };
  * unlabeled resting state.
  */
 export type ThreadListV2Status = "approval" | "input" | "working" | "failed" | "ready";
-export type ThreadListV2SwipeAction = "archive" | "settle" | "unsettle" | "snooze" | "unsnooze";
+export type ThreadListV2SwipeAction = "archive" | "snooze" | "unsnooze";
 
 export interface ThreadListV2ChangeRequestState extends ChangeRequestSettleSource {
   readonly linkedPullRequestKey?: string | null;
@@ -87,8 +87,6 @@ export function resolveThreadListV2SnoozeMenuSelection(input: {
 }
 
 export function resolveThreadListV2SwipeActions(input: {
-  readonly variant: "card" | "slim";
-  readonly settlementSupported: boolean;
   readonly snoozeSupported: boolean;
   readonly snoozable: boolean;
   /** Row is on the snoozed shelf. */
@@ -100,13 +98,8 @@ export function resolveThreadListV2SwipeActions(input: {
   if (input.snoozed === true) {
     return { primary: "unsnooze", secondary: null };
   }
-  const primary = input.settlementSupported
-    ? input.variant === "slim"
-      ? "unsettle"
-      : "settle"
-    : "archive";
   return {
-    primary,
+    primary: "archive",
     secondary: input.snoozeSupported && input.snoozable ? "snooze" : null,
   };
 }
