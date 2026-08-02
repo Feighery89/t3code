@@ -13,6 +13,9 @@ const isIosPersonalTeamBuild = repoEnv.T3CODE_IOS_PERSONAL_TEAM === "1";
 const runtimeVersionPolicy =
   process.env.MOBILE_VERSION_POLICY ??
   (APP_VARIANT === "development" ? "appVersion" : "fingerprint");
+const personalPreviewUpdateApiUrl = repoEnv.T3CODE_PERSONAL_PREVIEW_UPDATE_API_URL?.trim();
+const personalPreviewDefaultEnvironmentHost =
+  repoEnv.T3CODE_PERSONAL_PREVIEW_DEFAULT_ENVIRONMENT_HOST?.trim();
 
 const personalTeamBundleIdentifier = repoEnv.T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID?.trim();
 const IOS_BUNDLE_IDENTIFIER_PATTERN = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
@@ -349,6 +352,12 @@ const config: ExpoConfig = {
   extra: {
     appVariant: APP_VARIANT,
     iosPersonalTeamBuild: isIosPersonalTeamBuild,
+    personalPreviewUpdates:
+      APP_VARIANT === "preview" && personalPreviewUpdateApiUrl
+        ? { latestReleaseApiUrl: personalPreviewUpdateApiUrl }
+        : null,
+    personalPreviewDefaultEnvironmentHost:
+      APP_VARIANT === "preview" ? (personalPreviewDefaultEnvironmentHost ?? null) : null,
     relay: {
       url: repoEnv.T3CODE_RELAY_URL ?? null,
     },
