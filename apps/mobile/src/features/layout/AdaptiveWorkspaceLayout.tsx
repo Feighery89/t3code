@@ -441,7 +441,10 @@ function AdaptiveWorkspaceLayoutContent(
   }, [navigation]);
 
   const handleOpenArchive = useCallback(() => {
-    navigation.navigate("SettingsSheet", { screen: "SettingsArchive" });
+    navigation.navigate("SettingsSheet", {
+      screen: "SettingsContent",
+      params: { screen: "SettingsArchive" },
+    });
   }, [navigation]);
 
   // Minted here (root stack navigation) so the sidebar pane stays free of

@@ -94,7 +94,7 @@ interface AppUpdateCheckOptions {
    * asking only if the app then stays foregrounded so long that the install
    * never gets its chance. "immediate" restarts as soon as the download
    * lands — reserved for flows where the user explicitly requested the update.
-  */
+   */
   readonly applyMode?: "background" | "immediate";
   readonly client?: AppUpdateClient;
   readonly deferral?: AppUpdateDeferral;
@@ -232,13 +232,14 @@ async function performPersonalPreviewUpdateCheck(
     setState("idle");
     return;
   }
-  if (check.value === null) {
+  const update = check.value;
+  if (update === null) {
     setState("current");
     return;
   }
 
   setState("available");
-  const presented = await settlePromise(() => client.presentUpdateAsync(check.value));
+  const presented = await settlePromise(() => client.presentUpdateAsync(update));
   if (presented._tag === "Failure") {
     reportUpdateFailure(presented, "Could not open the preview update.", options.onFailure);
     setState("idle");

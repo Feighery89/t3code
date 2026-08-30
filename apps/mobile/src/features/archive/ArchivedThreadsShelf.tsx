@@ -7,7 +7,7 @@ import type { SwipeableMethods } from "react-native-gesture-handler/ReanimatedSw
 import { SymbolView } from "../../components/AppSymbol";
 import { AppText as Text } from "../../components/AppText";
 import { cn } from "../../lib/cn";
-import { useThemeColor } from "../../lib/useThemeColor";
+import { useUniwindTheme } from "../../lib/useUniwindTheme";
 import { ThreadSwipeable } from "../home/thread-swipe-actions";
 import { useArchivedThreadListActions } from "../home/useThreadListActions";
 import { ArchivedThreadProjectLabel, ArchivedThreadRow } from "./ArchivedThreadsScreen";
@@ -132,7 +132,7 @@ export function ArchivedThreadsShelf(props: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const colorScheme = useColorScheme();
-  const mutedColor = useThemeColor("--color-foreground-muted");
+  const mutedColor = useUniwindTheme()["--color-foreground-muted"];
   const searchActive = props.searchQuery.trim().length > 0;
   useEffect(() => {
     if (searchActive) setExpanded(true);
