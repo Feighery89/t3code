@@ -1,5 +1,6 @@
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
-import type { EnvironmentId } from "@t3tools/contracts";
+import { type EnvironmentId, resolveEnvironmentMachineKind } from "@t3tools/contracts";
+import { useServerConfigs } from "../../state/entities";
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { ActivityIndicator, Pressable, useColorScheme, View } from "react-native";
 import type { SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -7,7 +8,6 @@ import type { SwipeableMethods } from "react-native-gesture-handler/ReanimatedSw
 import { SymbolView } from "../../components/AppSymbol";
 import { AppText as Text } from "../../components/AppText";
 import { cn } from "../../lib/cn";
-import { useUniwindTheme } from "../../lib/useUniwindTheme";
 import { ThreadSwipeable } from "../home/thread-swipe-actions";
 import { useArchivedThreadListActions } from "../home/useThreadListActions";
 import { ArchivedThreadProjectLabel, ArchivedThreadRow } from "./ArchivedThreadsScreen";
@@ -130,9 +130,9 @@ export function ArchivedThreadsShelf(props: {
     typeof ThreadSwipeable
   >["simultaneousWithExternalGesture"];
 }) {
+  const serverConfigs = useServerConfigs();
   const [expanded, setExpanded] = useState(false);
   const colorScheme = useColorScheme();
-  const mutedColor = useUniwindTheme()["--color-foreground-muted"];
   const searchActive = props.searchQuery.trim().length > 0;
   useEffect(() => {
     if (searchActive) setExpanded(true);
@@ -160,7 +160,11 @@ export function ArchivedThreadsShelf(props: {
         onPress={props.data.refresh}
         style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
       >
-        <SymbolView name="exclamationmark.triangle" size={12} tintColor={mutedColor} />
+        <SymbolView
+          name="exclamationmark.triangle"
+          size={12}
+          tintColorClassName="accent-foreground-muted"
+        />
         <Text className="text-xs font-t3-medium text-foreground-muted">
           Archive unavailable · Retry
         </Text>
@@ -199,12 +203,12 @@ export function ArchivedThreadsShelf(props: {
         </Text>
         <View className="h-px flex-1 bg-border" />
         {props.data.isLoading ? (
-          <ActivityIndicator color={String(mutedColor)} size="small" />
+          <ActivityIndicator colorClassName="accent-foreground-muted" size="small" />
         ) : (
           <SymbolView
             name={expanded ? "chevron.up" : "chevron.down"}
             size={10}
-            tintColor={mutedColor}
+            tintColorClassName="accent-foreground-muted"
             type="monochrome"
           />
         )}
@@ -231,6 +235,9 @@ export function ArchivedThreadsShelf(props: {
             return (
               <View className="pt-3" key={group.key}>
                 <ArchivedThreadProjectLabel
+                  environmentMachine={resolveEnvironmentMachineKind(
+                    serverConfigs.get(group.project.environmentId) ?? null,
+                  )}
                   environmentLabel={environmentLabel}
                   project={group.project}
                 />
