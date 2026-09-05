@@ -19,10 +19,9 @@ permissions:
 env:
   APK_NAME: t3-code-preview.apk
   APP_VARIANT: preview
-  # Pin the reviewed personal feature set while still rebasing it onto current
-  # upstream source. Rebase drops patch-equivalent commits as upstream merges
-  # them without dropping changes that remain personal to this build.
-  PERSONAL_FEATURE_HEAD: d114c3c11c4f7f5dcc4b55faa63b9af1ca924042
+  # Merge the reviewed feature set with current upstream. Replaying historical
+  # commits with rebase repeats conflicts that the feature branch already resolved.
+  PERSONAL_FEATURE_HEAD: 8b7f4f2c4b9d2f13db333ff044f4854a1565187b
   FEATURE_BRANCH: feat/mobile-quick-archive
   FEATURE_REPOSITORY: Feighery89/t3code
   NODE_OPTIONS: --max-old-space-size=6144
@@ -84,7 +83,7 @@ jobs:
           git -C source config user.name "github-actions[bot]"
           git -C source config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C source checkout --detach "$feature_sha"
-          git -C source rebase origin/main
+          git -C source merge --no-edit origin/main
 
           source_key="${main_sha}:${feature_sha}"
           latest_body=""
