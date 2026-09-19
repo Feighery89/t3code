@@ -19,10 +19,10 @@ permissions:
 env:
   APK_NAME: t3-code-preview.apk
   APP_VARIANT: preview
-  # Merge the reviewed feature set with current upstream. Replaying historical
-  # commits with rebase repeats conflicts that the feature branch already resolved.
-  PERSONAL_FEATURE_HEAD: 8b7f4f2c4b9d2f13db333ff044f4854a1565187b
-  FEATURE_BRANCH: feat/mobile-quick-archive
+  # Keep one reviewed personal snapshot directly on a current upstream parent.
+  # That avoids replaying the old feature history and its already-resolved conflicts.
+  PERSONAL_FEATURE_HEAD: ea9ee4c6ba13962cd8ab59a4efc0c721eedf19d8
+  FEATURE_BRANCH: feat/mobile-preview-current
   FEATURE_REPOSITORY: Feighery89/t3code
   NODE_OPTIONS: --max-old-space-size=6144
   EXPO_PUBLIC_T3CODE_PERSONAL_PREVIEW_DEFAULT_ENVIRONMENT_HOST: http://100.97.53.68:7791
@@ -83,7 +83,12 @@ jobs:
           git -C source config user.name "github-actions[bot]"
           git -C source config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C source checkout --detach "$feature_sha"
-          git -C source merge --no-edit origin/main
+          integration_blocked="false"
+          if ! git -C source merge --no-edit origin/main; then
+            git -C source merge --abort
+            integration_blocked="true"
+            echo "::warning::Preview build skipped because the personal feature snapshot needs reconciliation with current upstream."
+          fi
 
           source_key="${main_sha}:${feature_sha}"
           latest_body=""
@@ -92,7 +97,9 @@ jobs:
           fi
 
           should_build="true"
-          if [[ "$FORCE_REBUILD" != "true" && "$latest_body" == *"Source key: ${source_key}"* ]]; then
+          if [[ "$integration_blocked" == "true" ]]; then
+            should_build="false"
+          elif [[ "$FORCE_REBUILD" != "true" && "$latest_body" == *"Source key: ${source_key}"* ]]; then
             should_build="false"
             echo "Source has not changed since the latest preview release."
           fi
@@ -102,6 +109,7 @@ jobs:
 
           echo "build_sha=${build_sha}" >>"$GITHUB_OUTPUT"
           echo "feature_sha=${feature_sha}" >>"$GITHUB_OUTPUT"
+          echo "integration_blocked=${integration_blocked}" >>"$GITHUB_OUTPUT"
           echo "main_sha=${main_sha}" >>"$GITHUB_OUTPUT"
           echo "should_build=${should_build}" >>"$GITHUB_OUTPUT"
           echo "source_key=${source_key}" >>"$GITHUB_OUTPUT"
@@ -109,7 +117,13 @@ jobs:
 
       - name: Report unchanged source
         if: steps.source.outputs.should_build != 'true'
-        run: echo "No preview build was needed." >>"$GITHUB_STEP_SUMMARY"
+        run: |
+          if [[ "${{ steps.source.outputs.integration_blocked }}" == "true" ]]; then
+            echo "### Preview build paused" >>"$GITHUB_STEP_SUMMARY"
+            echo "Current upstream conflicts with the personal feature snapshot. The last successful preview remains available; this maintenance condition does not fail the daily workflow." >>"$GITHUB_STEP_SUMMARY"
+          else
+            echo "No preview build was needed." >>"$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Set up pnpm
         if: steps.source.outputs.should_build == 'true'
