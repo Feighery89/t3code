@@ -5,6 +5,7 @@ import { Platform, View } from "react-native";
 import { deriveProjectGroupLabel } from "@t3tools/client-runtime/state/project-grouping";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BackgroundConnectionSettingsSection } from "../background-connection/BackgroundConnectionSettingsSection";
 import { hasCloudPublicConfig } from "../cloud/publicConfig";
 import { useAdaptiveWorkspaceLayout } from "../layout/AdaptiveWorkspaceLayout";
 import { NativeHeaderToolbar } from "../../native/StackHeader";
@@ -89,6 +90,7 @@ function ConfiguredSettingsRouteScreen() {
           <SettingsRow icon="bell.badge" label="Notifications" target="SettingsNotifications" />
         </SettingsSection>
 
+        <BackgroundConnectionSettingsSection />
         <SettingsIndexSections />
       </ScrollView>
     </View>
@@ -121,6 +123,7 @@ function LocalSettingsRouteScreen() {
           />
         </SettingsSection>
 
+        <BackgroundConnectionSettingsSection />
         <SettingsIndexSections />
       </ScrollView>
     </View>

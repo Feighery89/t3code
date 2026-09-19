@@ -11,6 +11,10 @@ import { showConfirmDialog, showTextInputDialog } from "../../components/Confirm
 import { scopedThreadKey } from "../../lib/scopedEntities";
 import { refreshArchivedThreadsForEnvironment } from "../archive/useArchivedThreadSnapshots";
 import { pinOrderKeyBetween } from "@t3tools/client-runtime/state/thread-sort";
+import {
+  clearBackgroundConnectionRetainedThread,
+  getBackgroundConnectionRetainedThreadSnapshot,
+} from "../background-connection/retained-thread";
 import { appAtomRegistry } from "../../state/atom-registry";
 import { environmentServerConfigsAtom } from "../../state/server";
 import { environmentThreadShells, threadEnvironment } from "../../state/threads";
@@ -174,6 +178,12 @@ function useThreadActionExecutor(
         // lifecycle still feeds the archived-snapshot surface.
         if (action === "archive" || action === "unarchive" || action === "delete") {
           refreshArchivedThreadsForEnvironment(thread.environmentId);
+        }
+        if (Platform.OS === "android" && action === "delete") {
+          const retained = getBackgroundConnectionRetainedThreadSnapshot().thread;
+          if (retained?.environmentId === thread.environmentId && retained.threadId === thread.id) {
+            void clearBackgroundConnectionRetainedThread();
+          }
         }
         onCompleted?.(action, thread);
         return true;

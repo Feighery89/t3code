@@ -64,6 +64,7 @@ import {
   getConnectionAwareBrandHeaderOptions,
   WorkspaceConnectionTitle,
 } from "../home/WorkspaceConnectionTitle";
+import { ArchivedThreadsShelf, useArchivedThreadsShelfData } from "../archive/ArchivedThreadsShelf";
 import { SidebarHeaderActions } from "./sidebar-header-actions";
 import { MaterialThreadListToolbar } from "../home/MaterialThreadListToolbar";
 import { useMaterialToolbarHeight } from "../../components/useMaterialToolbarHeight";
@@ -108,6 +109,7 @@ interface ThreadNavigationSidebarProps {
   readonly width: number;
   readonly visible: boolean;
   readonly selectedThreadKey: string | null;
+  readonly onOpenArchive: () => void;
   readonly onOpenSettings: () => void;
   readonly onOpenEnvironmentSettings: () => void;
   readonly onNewThreadOnBranch: (thread: EnvironmentThreadShell) => void;
@@ -284,6 +286,12 @@ function ThreadNavigationSidebarPane(
           ),
     [selectedProjectScope],
   );
+  const archivedThreadsShelfData = useArchivedThreadsShelfData({
+    environments,
+    environmentId: options.selectedEnvironmentId,
+    projectKeys: selectedProjectRefs,
+    searchQuery: props.searchQuery,
+  });
   const scopedProjects = useMemo(
     () =>
       threadListV2Enabled
@@ -1256,6 +1264,18 @@ function ThreadNavigationSidebarPane(
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 style={styles.threadList}
+                ListFooterComponent={
+                  <ArchivedThreadsShelf
+                    data={archivedThreadsShelfData}
+                    fullSwipeWidth={props.width - 20}
+                    onOpenArchive={props.onOpenArchive}
+                    onSwipeableClose={handleSwipeableClose}
+                    onSwipeableWillOpen={handleSwipeableWillOpen}
+                    pane="sidebar"
+                    searchQuery={props.searchQuery}
+                    simultaneousSwipeGesture={sidebarScrollGesture}
+                  />
+                }
                 ListEmptyComponent={listEmpty}
               />
             </GestureDetector>
@@ -1289,7 +1309,10 @@ function ThreadNavigationSidebarPane(
             : { paddingBottom: insets.bottom }
         }
       >
-        {Platform.OS === "android" && listItems.length === 0 ? (
+        {Platform.OS === "android" &&
+        listItems.length === 0 &&
+        archivedThreadsShelfData.threadCount === 0 &&
+        archivedThreadsShelfData.error === null ? (
           <View className="flex-1 items-center justify-center">{listEmpty}</View>
         ) : (
           <SwipeableScrollGateProvider enabled={swipeEnabled}>
@@ -1321,6 +1344,18 @@ function ThreadNavigationSidebarPane(
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
                 style={styles.threadList}
+                ListFooterComponent={
+                  <ArchivedThreadsShelf
+                    data={archivedThreadsShelfData}
+                    fullSwipeWidth={props.width - 20}
+                    onOpenArchive={props.onOpenArchive}
+                    onSwipeableClose={handleSwipeableClose}
+                    onSwipeableWillOpen={handleSwipeableWillOpen}
+                    pane="sidebar"
+                    searchQuery={props.searchQuery}
+                    simultaneousSwipeGesture={sidebarScrollGesture}
+                  />
+                }
                 ListEmptyComponent={listEmpty}
               />
             </GestureDetector>

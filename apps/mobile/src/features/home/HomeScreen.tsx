@@ -79,9 +79,11 @@ import {
 import {
   buildHomeProjectScopes,
   buildHomeThreadGroups,
+  hasVisibleHomeThreadResults,
   sortHomeProjectScopes,
   type HomeProjectSortOrder,
 } from "./homeThreadList";
+import { ArchivedThreadsShelf, useArchivedThreadsShelfData } from "../archive/ArchivedThreadsShelf";
 import { SwipeableScrollGateProvider, useSwipeableScrollGate } from "./thread-swipe-actions";
 import { useMaterialFabScroll } from "./MaterialFabScrollContext";
 
@@ -108,6 +110,8 @@ interface HomeScreenProps {
   readonly onProjectSortOrderChange: (sortOrder: HomeProjectSortOrder) => void;
   readonly onThreadSortOrderChange: (sortOrder: SidebarThreadSortOrder) => void;
   readonly onAddConnection: () => void;
+  readonly onOpenEnvironments: () => void;
+  readonly onOpenArchivedThreads: () => void;
   readonly onOpenSettings: () => void;
   readonly onStartNewTask: () => void;
   readonly onSelectThread: (thread: EnvironmentThreadShell) => void;
@@ -356,6 +360,12 @@ export function HomeScreen(props: HomeScreenProps) {
           ),
     [selectedProjectScope],
   );
+  const archivedThreadsShelfData = useArchivedThreadsShelfData({
+    environments: props.environments,
+    environmentId: props.selectedEnvironmentId,
+    projectKeys: selectedProjectRefKeys,
+    searchQuery: props.searchQuery,
+  });
   const scopedProjects = useMemo(
     () =>
       threadListV2Enabled
@@ -1089,8 +1099,18 @@ export function HomeScreen(props: HomeScreenProps) {
   // full-page "No threads yet". Settled threads are unarchived live shells,
   // so the v1 check already covers v2.
   const hasAnyThreads =
-    props.threads.some((thread) => thread.archivedAt === null) || props.pendingTasks.length > 0;
-  const hasResults = threadListV2Enabled ? threadListV2Items.length > 0 : projectGroups.length > 0;
+    props.threads.some((thread) => thread.archivedAt === null) ||
+    props.pendingTasks.length > 0 ||
+    archivedThreadsShelfData.hasAnyArchivedThreads ||
+    archivedThreadsShelfData.error !== null;
+  const hasVisibleV1Results = hasVisibleHomeThreadResults({
+    activeResultCount: projectGroups.length,
+    archivedResultCount: archivedThreadsShelfData.threadCount,
+  });
+  const hasVisibleV2Results = hasVisibleHomeThreadResults({
+    activeResultCount: threadListV2Items.length,
+    archivedResultCount: archivedThreadsShelfData.threadCount,
+  });
   const selectedEnvironmentLabel =
     props.selectedEnvironmentId === null
       ? null
@@ -1153,7 +1173,7 @@ export function HomeScreen(props: HomeScreenProps) {
   // mobile — the menu is the one filter surface).
   const v2ListHeader = listHeader;
 
-  const listEmpty = !hasResults ? (
+  const listEmpty = !hasVisibleV1Results ? (
     hasSearchQuery && threadSearch.isPending ? null : hasSearchQuery ? (
       <EmptyState
         title="No results"
@@ -1180,9 +1200,12 @@ export function HomeScreen(props: HomeScreenProps) {
       />
     )
   ) : null;
-  // Use the v2 project scope for its empty state. Snoozed threads need no
-  // special empty state: their shelf header is a list row even while collapsed.
-  const v2ListEmpty =
+  // Self-contained: v1's listEmpty keys off projectGroups, which ignores the
+  // v2 project scope, so it can be null (results elsewhere) while this list
+  // is empty. Snoozed threads need no special empty state: their shelf header
+  // is a list row even while collapsed. Archived matches live in the footer,
+  // so they explicitly suppress the active-list empty state above.
+  const v2ListEmpty = !hasVisibleV2Results ? (
     hasSearchQuery && threadSearch.isPending ? null : hasSearchQuery ? (
       <EmptyState
         title="No results"
@@ -1197,11 +1220,14 @@ export function HomeScreen(props: HomeScreenProps) {
       />
     ) : (
       listEmpty
-    );
+    )
+  ) : null;
 
   if (
     Platform.OS === "android" &&
-    (threadListV2Enabled ? threadListV2Items.length === 0 : listLayout.items.length === 0)
+    (threadListV2Enabled ? threadListV2Items.length === 0 : listLayout.items.length === 0) &&
+    archivedThreadsShelfData.threadCount === 0 &&
+    archivedThreadsShelfData.error === null
   ) {
     return (
       <View className="flex-1 bg-header">
@@ -1233,12 +1259,21 @@ export function HomeScreen(props: HomeScreenProps) {
               extraData={v2ExtraData}
               ListHeaderComponent={v2ListHeader}
               ListFooterComponent={
-                settledShelfExpanded && threadListV2Layout.hiddenSettledCount > 0 ? (
-                  <ThreadListV2ShowMoreRow
-                    hiddenCount={threadListV2Layout.hiddenSettledCount}
-                    onPress={showMoreSettled}
+                <>
+                  {settledShelfExpanded && threadListV2Layout.hiddenSettledCount > 0 ? (
+                    <ThreadListV2ShowMoreRow
+                      hiddenCount={threadListV2Layout.hiddenSettledCount}
+                      onPress={showMoreSettled}
+                    />
+                  ) : null}
+                  <ArchivedThreadsShelf
+                    data={archivedThreadsShelfData}
+                    onOpenArchive={props.onOpenArchivedThreads}
+                    onSwipeableClose={handleSwipeableClose}
+                    onSwipeableWillOpen={handleSwipeableWillOpen}
+                    searchQuery={props.searchQuery}
                   />
-                ) : null
+                </>
               }
               ListEmptyComponent={v2ListEmpty}
               style={{ flex: 1 }}
@@ -1288,6 +1323,15 @@ export function HomeScreen(props: HomeScreenProps) {
             estimatedItemSize={ESTIMATED_THREAD_ROW_HEIGHT}
             extraData={extraData}
             ListHeaderComponent={listHeader}
+            ListFooterComponent={
+              <ArchivedThreadsShelf
+                data={archivedThreadsShelfData}
+                onOpenArchive={props.onOpenArchivedThreads}
+                onSwipeableClose={handleSwipeableClose}
+                onSwipeableWillOpen={handleSwipeableWillOpen}
+                searchQuery={props.searchQuery}
+              />
+            }
             ListEmptyComponent={listEmpty}
             style={{ flex: 1 }}
             automaticallyAdjustsScrollIndicatorInsets={NATIVE_LIQUID_GLASS_SUPPORTED}

@@ -72,3 +72,52 @@ follow replacement sessions. After a transport failure they wait for the
 supervisor; an expected domain failure may resubscribe on the same healthy
 session. Reconnection does not automatically replay mutations, whose retry and
 idempotency rules belong to the operation.
+
+### Android background ownership
+
+Android can add a second application-root owner without adding a second
+connection runtime. The opt-in **Keep connected in background** setting starts a
+`remoteMessaging` foreground service in the normal application process. React
+Native Headless JS cold-starts the existing mobile runtime and acquires
+reference-counted leases against the same process-wide `appAtomRegistry` used by
+the UI. Mounting the UI and background task together therefore still produces
+one supervisor and one transport per saved environment.
+
+The headless root retains:
+
+- the environment catalog, server configurations, and shell state for every
+  saved environment;
+- aggregate thread-shell state;
+- full detail for the last-opened thread and threads whose sessions are
+  `starting` or `running`; and
+- the shared, reference-counted thread-outbox drain worker.
+
+It does not retain every historical thread body. Once running work settles and
+is not the last-opened thread, the existing idle lifetime and persistence rules
+remain authoritative.
+
+T3 Connect authentication has matching `ui` and `background` owners. UI
+ownership wins while the app is visible. A cold headless start loads the
+persisted Clerk session and installs its token provider into the existing
+`managedRelaySessionAtom`; direct and Tailscale startup is not blocked when
+Clerk is signed out, unconfigured, or temporarily unavailable. There is no
+background-only relay transport or authentication path.
+
+The service is deliberately opt-in and defaults off. While enabled, Android
+requires a silent ongoing notification. React Native owns a partial CPU wake
+lock for the headless task, and the native service holds a best-effort
+high-performance Wi-Fi lock. These locks and the continuously active network
+connections have an intentional battery and data cost. A battery-optimization
+exemption improves survival under device power management, but declining it
+does not silently turn the feature off.
+
+The service uses sticky restart behavior and restores an enabled preference
+after package replacement or boot once credential-protected storage is
+available. Android force-stop remains absolute: no receiver or service may
+restart the app until the user launches it again. The app also cannot restart a
+separately stopped Tailscale VPN.
+
+At introduction, the direct/Tailscale path was exercised on a physical Android
+device across lock, Doze, task removal, network transitions, package replacement,
+and reboot. Cold T3 Connect ownership and token refresh have automated coverage,
+but were not live-validated against a configured relay account on that device.

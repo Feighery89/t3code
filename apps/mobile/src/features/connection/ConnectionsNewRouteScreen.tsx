@@ -17,6 +17,7 @@ import { ErrorBanner } from "../../components/ErrorBanner";
 import { ConnectionFormField } from "./ConnectionFormField";
 import { ConnectionSheetButton } from "./ConnectionSheetButton";
 import { buildPairingUrl, extractPairingUrlFromQrPayload, parsePairingUrl } from "./pairing";
+import { personalPreviewDefaultEnvironmentHost } from "./personal-preview-environment";
 import { useRemoteConnections } from "../../state/use-remote-environment-registry";
 
 type ConnectionsNewRouteParams = {
@@ -52,6 +53,7 @@ export function ConnectionsNewRouteScreen({
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [scannerLocked, setScannerLocked] = useState(false);
   const attemptedAutoConnectRef = useRef<string | null>(null);
+  const defaultEnvironmentHost = personalPreviewDefaultEnvironmentHost();
 
   const headerIconColor = useUniwindTheme()["--color-icon"];
 
@@ -59,9 +61,9 @@ export function ConnectionsNewRouteScreen({
 
   useEffect(() => {
     const { host, code } = parsePairingUrl(connectionPairingUrl);
-    setHostInput(host);
+    setHostInput(host || defaultEnvironmentHost);
     setCodeInput(code);
-  }, [connectionPairingUrl]);
+  }, [connectionPairingUrl, defaultEnvironmentHost]);
 
   useEffect(() => {
     if (routePairingUrl.length === 0) {
@@ -69,9 +71,9 @@ export function ConnectionsNewRouteScreen({
     }
 
     const { host, code } = parsePairingUrl(routePairingUrl);
-    setHostInput(host);
+    setHostInput(host || defaultEnvironmentHost);
     setCodeInput(code);
-  }, [routePairingUrl]);
+  }, [defaultEnvironmentHost, routePairingUrl]);
 
   useEffect(() => {
     if (pairingConnectionError) {

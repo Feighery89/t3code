@@ -78,6 +78,15 @@ vi.mock("../lib/attachmentUpload", () => ({
   prepareTurnAttachments: harness.prepareTurnAttachments,
 }));
 
+vi.mock("./presentation", async () => {
+  const { Atom } = await import("effect/unstable/reactivity");
+  return { environmentPresentations: { presentationsAtom: Atom.make(new Map()) } };
+});
+vi.mock("./projects", async () => {
+  const { Atom } = await import("effect/unstable/reactivity");
+  return { environmentProjects: { projectsAtom: Atom.make([]) } };
+});
+
 vi.mock("./entities", () => ({
   useProjects: () => [],
   useServerConfigs: () => new Map(),
@@ -86,12 +95,16 @@ vi.mock("./entities", () => ({
 
 vi.mock("./server", async () => {
   const { Atom } = await import("effect/unstable/reactivity");
-  return { serverEnvironment: { configValueAtom: Atom.family(() => Atom.make(null)) } };
+  return {
+    environmentServerConfigsAtom: Atom.make(new Map()),
+    serverEnvironment: { configValueAtom: Atom.family(() => Atom.make(null)) },
+  };
 });
 
-vi.mock("./threads", () => ({
-  threadEnvironment: {},
-}));
+vi.mock("./threads", async () => {
+  const { Atom } = await import("effect/unstable/reactivity");
+  return { threadEnvironment: {}, environmentThreadShells: { threadShellsAtom: Atom.make([]) } };
+});
 
 vi.mock("./use-atom-command", () => ({
   useAtomCommand: () => async () => undefined,
@@ -100,6 +113,10 @@ vi.mock("./use-atom-command", () => ({
 vi.mock("./use-thread-outbox", async () => {
   const { Atom } = await import("effect/unstable/reactivity");
   return {
+    dispatchingQueuedMessageIdAtom: Atom.make(null).pipe(Atom.keepAlive),
+    threadOutboxShellStatusesAtom: Atom.make(
+      new Map([[EnvironmentId.make("environment-1"), "live"]]),
+    ).pipe(Atom.keepAlive),
     editingQueuedMessageIdsAtom: Atom.make<Record<string, boolean>>({}).pipe(Atom.keepAlive),
     useThreadOutboxMessages: () => ({}),
     useThreadOutboxShellStatuses: () => new Map(),
@@ -141,8 +158,9 @@ import {
 import type { QueuedThreadMessage } from "./thread-outbox-model";
 import * as composerDrafts from "./use-composer-drafts";
 import { recoverFailedThreadDraft } from "./recover-failed-thread-draft";
-import { editingQueuedMessageIdsAtom } from "./use-thread-outbox";
+import { dispatchingQueuedMessageIdAtom, editingQueuedMessageIdsAtom } from "./use-thread-outbox";
 import {
+  acquireThreadOutboxDrain,
   completeQueuedMessageDelivery,
   prepareQueuedMessageAttachments,
   recoverEditedCreationAfterDelivery,
@@ -761,5 +779,31 @@ describe("thread outbox recovery rollback", () => {
     );
     expect(remainingMessages()).toEqual([]);
     expect(harness.setPendingConnectionError).toHaveBeenCalledWith("too large");
+  });
+});
+
+describe("shared foreground and background drain", () => {
+  it("removes a vanished thread's queued message once when both owners are mounted", async () => {
+    const message = queuedMessage({ messageId: "shared-owner-message", text: "queued text" });
+    await harness.manager.enqueue(message);
+    appAtomRegistry.set(dispatchingQueuedMessageIdAtom, null);
+    const drained = Promise.withResolvers<void>();
+    const unsubscribe = appAtomRegistry.subscribe(
+      harness.manager.queuedMessagesByThreadKeyAtom,
+      (messages) => {
+        if (Object.values(messages).flat().length === 0) drained.resolve();
+      },
+    );
+    const releaseUi = acquireThreadOutboxDrain(appAtomRegistry);
+    const releaseBackground = acquireThreadOutboxDrain(appAtomRegistry);
+    try {
+      await drained.promise;
+      expect(harness.removeOutboxMessage).toHaveBeenCalledTimes(1);
+      expect(remainingMessages()).toEqual([]);
+    } finally {
+      releaseUi();
+      releaseBackground();
+      unsubscribe();
+    }
   });
 });

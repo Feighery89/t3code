@@ -1,7 +1,7 @@
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { StatusBar, View } from "react-native";
+import { Platform, StatusBar, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,6 +22,7 @@ import { appAtomRegistry } from "./state/atom-registry";
 import { OverlayPortalHost } from "./components/OverlayPortal";
 import { shouldHandleAppLink } from "./lib/appLinking";
 import { useMobileNavigationTheme } from "./lib/useMobileNavigationTheme";
+import { ensureBackgroundConnectionStarted } from "./native/backgroundConnection";
 import { SubscriptionUsageCoordinator } from "./widgets/SubscriptionUsageCoordinator";
 
 import "../global.css";
@@ -53,9 +54,19 @@ function SplashScreenCoordinator() {
   return null;
 }
 
+function BackgroundConnectionServiceCoordinator() {
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      ensureBackgroundConnectionStarted();
+    }
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <RegistryContext.Provider value={appAtomRegistry}>
+      <BackgroundConnectionServiceCoordinator />
       <CloudAuthProvider>
         <AppearancePreferencesProvider>
           <AppContent />
