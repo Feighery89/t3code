@@ -253,7 +253,7 @@ jobs:
 
       - name: Retain verified preview artifact
         if: steps.source.outputs.should_build == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: t3-code-preview-${{ steps.apk.outputs.version_code }}
           path: |
